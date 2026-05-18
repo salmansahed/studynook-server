@@ -27,6 +27,13 @@ async function run() {
     const db = client.db("studynook-auth");
     const roomsCollection = db.collection("roomsCollection");
 
+    // For - All Rooms
+    app.get("/rooms", async (req, res) => {
+      const cursor = roomsCollection.find().sort({ _id: -1 }).toArray();
+      const result = await cursor;
+      res.send(result);
+    });
+
     //For - Available Study Rooms
     app.get("/available-study-rooms", async (req, res) => {
       const cursor = roomsCollection.find().sort({ _id: -1 }).limit(6).toArray();
