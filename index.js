@@ -29,14 +29,54 @@ async function run() {
 
     // For - All Rooms
     app.get("/rooms", async (req, res) => {
-      const cursor = roomsCollection.find().sort({ _id: -1 }).toArray();
-      const result = await cursor;
-      res.send(result);
+      try {
+        const { search, amenities, minPrice, maxPrice } = req.query;
+        let query = {};
+        if (search) {
+          query.name = {
+            $regex: search,
+            $options: "i",
+          };
+        }
+        if (amenities) {
+          const amenitiesArray = amenities.split(",");
+
+          query.amenities = {
+            $all: amenitiesArray,
+          }
+        }
+
+        if (minPrice || maxPrice) {
+          query.pricePerHour = {};
+
+          if (minPrice) {
+            query.pricePerHour.$gte = Number(minPrice);
+          }
+
+          if (maxPrice) {
+            query.pricePerHour.$lte = Number(maxPrice);
+          }
+        }
+
+        console.log("User searched for =>", search);
+        const result = await roomsCollection
+          .find(query)
+          .sort({ _id: -1 })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.log("Search API Error =>", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
     });
 
     //For - Available Study Rooms
     app.get("/available-study-rooms", async (req, res) => {
-      const cursor = roomsCollection.find().sort({ _id: -1 }).limit(6).toArray();
+      const cursor = roomsCollection
+        .find()
+        .sort({ _id: -1 })
+        .limit(6)
+        .toArray();
       const result = await cursor;
       res.send(result);
     });
