@@ -27,6 +27,13 @@ async function run() {
     const db = client.db("studynook-auth");
     const roomsCollection = db.collection("roomsCollection");
 
+    // Rooms Data Post
+    app.post("/rooms", async (req, res) => {
+      const newData = req.body;
+      const result = await roomsCollection.insertOne(newData);
+      res.send(result);
+    });
+
     // For - All Rooms
     app.get("/rooms", async (req, res) => {
       try {
@@ -43,18 +50,18 @@ async function run() {
 
           query.amenities = {
             $all: amenitiesArray,
-          }
+          };
         }
 
         if (minPrice || maxPrice) {
-          query.pricePerHour = {};
+          query.hourlyRate = {};
 
           if (minPrice) {
-            query.pricePerHour.$gte = Number(minPrice);
+            query.hourlyRate.$gte = Number(minPrice);
           }
 
           if (maxPrice) {
-            query.pricePerHour.$lte = Number(maxPrice);
+            query.hourlyRate.$lte = Number(maxPrice);
           }
         }
 
