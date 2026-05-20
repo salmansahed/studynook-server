@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
 app.use(cors());
@@ -23,7 +23,7 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
-    // await client.connect();
+    await client.connect();
     const db = client.db("studynook-auth");
     const roomsCollection = db.collection("roomsCollection");
 
@@ -77,6 +77,16 @@ async function run() {
       }
     });
 
+    // Details by id API///
+    app.get("/rooms/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = {
+        _id: new ObjectId(id),
+      };
+      const result = await roomsCollection.findOne(query);
+      res.send(result);
+    });
+
     //For - Available Study Rooms
     app.get("/available-study-rooms", async (req, res) => {
       const cursor = roomsCollection
@@ -89,13 +99,13 @@ async function run() {
     });
 
     // Get my-listing Rooms API
-    app.get("/rooms/:ownerId", async(req, res)=>{
-      const {ownerId} = req.params;
-      const result = await roomsCollection.find({ownerId: ownerId}).toArray();
-      res.send(result)
-    })
+    app.get("/rooms/owner/:ownerId", async (req, res) => {
+      const { ownerId } = req.params;
+      const result = await roomsCollection.find({ ownerId: ownerId }).toArray();
+      res.send(result);
+    });
 
-    // await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
