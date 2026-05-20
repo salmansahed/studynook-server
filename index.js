@@ -88,6 +88,13 @@ async function run() {
       res.send(result);
     });
 
+    // Get my-listing Rooms API
+    app.get("/rooms/:ownerId", async(req, res)=>{
+      const {ownerId} = req.params;
+      const result = await roomsCollection.find({ownerId: ownerId}).toArray();
+      res.send(result)
+    })
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
