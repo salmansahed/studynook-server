@@ -77,7 +77,7 @@ async function run() {
       }
     });
 
-    // Details by id API///
+    // Details by id API
     app.get("/rooms/:id", async (req, res) => {
       const { id } = req.params;
       const query = {
@@ -102,6 +102,19 @@ async function run() {
     app.get("/rooms/owner/:ownerId", async (req, res) => {
       const { ownerId } = req.params;
       const result = await roomsCollection.find({ ownerId: ownerId }).toArray();
+      res.send(result);
+    });
+
+    // Update Room Data
+    app.patch("/rooms/:id", async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+      console.log("ID received:", id);
+      console.log("Data to update:", updatedData);
+      const result = await roomsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData },
+      );
       res.send(result);
     });
 
