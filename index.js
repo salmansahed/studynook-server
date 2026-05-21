@@ -156,6 +156,27 @@ async function run() {
     // Post Bookings Data
     app.post("/bookings", async (req, res) => {
       const newBooking = req.body;
+      const { roomId, date, startTime, endTime } = newBooking;
+
+      const query = {
+        roomId: roomId,
+        date: date,
+        $or: [
+          {
+            startTime: { $lt: endTime },
+            endTime: { $gt: startTime },
+          },
+        ],
+      };
+
+      const existingBooking = await bookingsCollection.findOne(query);
+
+      if (existingBooking) {
+        return res.status(400).send({
+          message: "Sorry, This room already booked!",
+        });
+      }
+
       const result = await bookingsCollection.insertOne(newBooking);
       res.send(result);
     });
