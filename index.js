@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const port = process.env.PORT || 5000;
 
 app.use(cors());
@@ -21,6 +22,32 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
+
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  // console.log("authHeader =>", authHeader);
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  // console.log("token =>", token);
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    // console.log("payload =>", payload);
+    next();
+  } catch (error) {
+    // console.log("error =>", error);
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+};
+
 async function run() {
   try {
     // await client.connect();
@@ -129,14 +156,16 @@ async function run() {
     // Post Bookings Data
     app.post("/bookings", async (req, res) => {
       const newBooking = req.body;
-      console.log("newBooking =>", newBooking);
       const result = await bookingsCollection.insertOne(newBooking);
       res.send(result);
     });
 
     // Get Booking Data
     app.get("/bookings", async (req, res) => {
-      const result = await bookingsCollection.find().toArray();
+      const result = await bookingsCollection
+        .find()
+        .sort({ _id: -1 })
+        .toArray();
       res.send(result);
     });
 
