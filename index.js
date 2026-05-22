@@ -40,6 +40,7 @@ const verifyToken = async (req, res, next) => {
   }
   try {
     const { payload } = await jwtVerify(token, JWKS);
+    
     // console.log("payload =>", payload);
     next();
   } catch (error) {
@@ -54,6 +55,7 @@ async function run() {
     const db = client.db("studynook-auth");
     const roomsCollection = db.collection("roomsCollection");
     const bookingsCollection = db.collection("bookingsCollection");
+    const bookingsCountCollection = db.collection("bookingsCountCollection");
 
     // Rooms Data Post
     app.post("/rooms", verifyToken, async (req, res) => {
@@ -132,7 +134,7 @@ async function run() {
       res.send(result);
     });
 
-    // Update Room Data
+    // Update Room Data ................................................
     app.patch("/rooms/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
@@ -143,7 +145,7 @@ async function run() {
       res.send(result);
     });
 
-    // Delete Room
+    // Delete Room ..............................................
     app.delete("/rooms/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const query = {
@@ -154,7 +156,7 @@ async function run() {
     });
 
     // Post Bookings Data
-    app.post("/bookings", async (req, res) => {
+    app.post("/bookings", verifyToken, async (req, res) => {
       const newBooking = req.body;
       const { roomId, date, startTime, endTime } = newBooking;
 
@@ -181,8 +183,8 @@ async function run() {
       res.send(result);
     });
 
-    // Get Booking Data .....................
-    app.get("/bookings", async (req, res) => {
+    // Get Booking Data 
+    app.get("/bookings", verifyToken, async (req, res) => {
       const result = await bookingsCollection
         .find()
         .sort({ _id: -1 })
@@ -190,14 +192,48 @@ async function run() {
       res.send(result);
     });
 
-    // Cancel Booking Status
+    // post  bookingsCount
+    app.post("/bookingsCount", async (req, res) => {
+      const { roomId } = req.body;
+
+      const result = await bookingsCountCollection.updateOne(
+        { roomId: roomId },
+        { $inc: { count: 1 } },
+        { upsert: true },
+      );
+      res.send(result);
+    });
+
+    // get bookingCount
+    app.get("/bookingsCount/:roomId", async (req, res) => {
+      const roomId = req.params.roomId;
+      const result = await bookingsCountCollection.findOne({ roomId: roomId });
+
+      res.send({ count: result ? result.count : 0 });
+    });
+
+    // Cancel Booking Status ..............................
     app.patch("/bookings/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const updateStatus = req.body;
+
       const result = await bookingsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: updateStatus },
       );
+
+      if (updateStatus.status === "Cancelled") {
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (booking) {
+          await bookingsCountCollection.updateOne(
+            { roomId: booking.roomId },
+            { $inc: { count: -1 } },
+          );
+        }
+      }
+
       res.send(result);
     });
 
