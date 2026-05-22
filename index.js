@@ -40,7 +40,7 @@ const verifyToken = async (req, res, next) => {
   }
   try {
     const { payload } = await jwtVerify(token, JWKS);
-    
+    req.user = payload;
     // console.log("payload =>", payload);
     next();
   } catch (error) {
@@ -134,25 +134,61 @@ async function run() {
       res.send(result);
     });
 
-    // Update Room Data ................................................
+    // Update Room Data with ownerId check
     app.patch("/rooms/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
-      const result = await roomsCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: updatedData },
-      );
-      res.send(result);
+      const loggedInUserId = req.user.id;
+
+      try {
+        const room = await roomsCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!room) {
+          return res.status(404).send({ message: "Room not found" });
+        }
+
+        if (room.ownerId !== loggedInUserId) {
+          return res.status(403).send({
+            message: "Forbidden: You are not the owner to update this room",
+          });
+        }
+
+        const result = await roomsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData },
+        );
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Error updating room" });
+      }
     });
 
     // Delete Room ..............................................
     app.delete("/rooms/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
-      const query = {
-        _id: new ObjectId(id),
-      };
-      const result = await roomsCollection.deleteOne(query);
-      res.send(result);
+
+      const loggedInUserId = req.user.id;
+
+      try {
+        const room = await roomsCollection.findOne({ _id: new ObjectId(id) });
+        if (!room) {
+          return res.status(404).send({ message: "Room not found" });
+        }
+
+        if (room.ownerId !== loggedInUserId) {
+          return res
+            .status(403)
+            .send({ message: "Forbidden: You are not the owner" });
+        }
+
+        const result = await roomsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Error deleting room" });
+      }
     });
 
     // Post Bookings Data
@@ -183,7 +219,7 @@ async function run() {
       res.send(result);
     });
 
-    // Get Booking Data 
+    // Get Booking Data
     app.get("/bookings", verifyToken, async (req, res) => {
       const result = await bookingsCollection
         .find()
@@ -212,31 +248,44 @@ async function run() {
       res.send({ count: result ? result.count : 0 });
     });
 
-    // Cancel Booking Status ..............................
+    // Cancel Booking Status with user ownership check
     app.patch("/bookings/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const updateStatus = req.body;
+      const loggedInUserId = req.user.id;
 
-      const result = await bookingsCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: updateStatus },
-      );
-
-      if (updateStatus.status === "Cancelled") {
+      try {
         const booking = await bookingsCollection.findOne({
           _id: new ObjectId(id),
         });
-        if (booking) {
+
+        if (!booking) {
+          return res.status(404).send({ message: "Booking not found" });
+        }
+
+        if (booking.userId !== loggedInUserId) {
+          return res
+            .status(403)
+            .send({ message: "Forbidden: You cannot cancel this booking" });
+        }
+
+        const result = await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updateStatus },
+        );
+
+        if (updateStatus.status === "Cancelled") {
           await bookingsCountCollection.updateOne(
             { roomId: booking.roomId },
             { $inc: { count: -1 } },
           );
         }
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Error cancelling booking" });
       }
-
-      res.send(result);
     });
-
     // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
