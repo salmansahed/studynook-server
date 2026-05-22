@@ -56,7 +56,7 @@ async function run() {
     const bookingsCollection = db.collection("bookingsCollection");
 
     // Rooms Data Post
-    app.post("/rooms", async (req, res) => {
+    app.post("/rooms", verifyToken, async (req, res) => {
       const newData = req.body;
       const result = await roomsCollection.insertOne(newData);
       res.send(result);
@@ -104,7 +104,7 @@ async function run() {
       }
     });
 
-    // Details by id API
+    // Room Details by id API
     app.get("/rooms/:id", async (req, res) => {
       const { id } = req.params;
       const query = {
@@ -126,14 +126,14 @@ async function run() {
     });
 
     // Get my-listing Rooms API
-    app.get("/rooms/owner/:ownerId", async (req, res) => {
+    app.get("/rooms/owner/:ownerId", verifyToken, async (req, res) => {
       const { ownerId } = req.params;
       const result = await roomsCollection.find({ ownerId: ownerId }).toArray();
       res.send(result);
     });
 
     // Update Room Data
-    app.patch("/rooms/:id", async (req, res) => {
+    app.patch("/rooms/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
       const result = await roomsCollection.updateOne(
@@ -144,7 +144,7 @@ async function run() {
     });
 
     // Delete Room
-    app.delete("/rooms/:id", async (req, res) => {
+    app.delete("/rooms/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const query = {
         _id: new ObjectId(id),
@@ -181,7 +181,7 @@ async function run() {
       res.send(result);
     });
 
-    // Get Booking Data
+    // Get Booking Data .....................
     app.get("/bookings", async (req, res) => {
       const result = await bookingsCollection
         .find()
@@ -191,7 +191,7 @@ async function run() {
     });
 
     // Cancel Booking Status
-    app.patch("/bookings/:id", async (req, res) => {
+    app.patch("/bookings/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const updateStatus = req.body;
       const result = await bookingsCollection.updateOne(
