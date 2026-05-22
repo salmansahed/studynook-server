@@ -101,7 +101,7 @@ async function run() {
           .toArray();
         res.send(result);
       } catch (error) {
-        console.log("Search API Error =>", error);
+        // console.log("Search API Error =>", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
